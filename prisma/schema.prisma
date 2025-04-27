@@ -1,0 +1,52 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  groups    UserGroup[]
+  createdGroups Group[] @relation("GroupCreatedBy")  // 👈 aqui: relação inversa
+}
+
+model Group {
+  id           String      @id @default(uuid())
+  createdAt    DateTime     @default(now())
+  name         String?
+  createdById  String
+  members      UserGroup[]
+  saves        Save[]
+
+  createdBy    User         @relation("GroupCreatedBy", fields: [createdById], references: [id])
+}
+
+
+
+model UserGroup {
+  id       String  @id @default(uuid())
+  userId   String
+  groupId  String
+
+  user     User    @relation(fields: [userId], references: [id])
+  group    Group   @relation(fields: [groupId], references: [id])
+}
+
+model Save {
+  id         String      @id @default(uuid())
+  groupId    String
+  type       SaveType
+  path       String
+  updatedAt  DateTime     @updatedAt
+
+  group      Group       @relation(fields: [groupId], references: [id])
+}
+
+enum SaveType {
+  WORLD
+  CHARACTER
+}
