@@ -21,8 +21,9 @@ const __dirname = dirname(__filename);
 const app = Fastify({ logger: true });
 
 app.register(fastifyCors, {
-  origin: true, // 🔥 permite qualquer origem (durante desenvolvimento)
+  origin: true, // permite qualquer origem
   credentials: true,
+  methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"], // 👈 adiciona todos os métodos necessários
 });
 
 // Plugins

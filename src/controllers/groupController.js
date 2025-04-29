@@ -64,11 +64,9 @@ export async function listGroupMembers(request, reply) {
 
     // Verifica se quem está pedindo é o criador do grupo
     if (group.createdById !== userId) {
-      return reply
-        .code(403)
-        .send({
-          error: "Acesso negado. Apenas o criador pode listar membros.",
-        });
+      return reply.code(403).send({
+        error: "Acesso negado. Apenas o criador pode listar membros.",
+      });
     }
 
     // Busca os membros
@@ -91,5 +89,124 @@ export async function listGroupMembers(request, reply) {
   } catch (error) {
     console.error(error);
     reply.code(500).send({ error: "Erro ao listar membros do grupo." });
+  }
+}
+
+export async function listCreatedGroups(request, reply) {
+  try {
+    const userId = request.headers["x-user-id"];
+
+    if (!userId) {
+      return reply
+        .code(400)
+        .send({ error: "User ID não informado no cabeçalho." });
+    }
+
+    const groups = await prisma.group.findMany({
+      where: {
+        createdById: userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        _count: {
+          select: {
+            members: true,
+          },
+        },
+      },
+    });
+
+    reply.send({
+      count: groups.length,
+      groups,
+    });
+  } catch (error) {
+    console.error(error);
+    reply.code(500).send({ error: "Erro ao listar grupos criados." });
+  }
+}
+
+export async function editGroup(request, reply) {
+  try {
+    const { groupId } = request.params;
+    const { name } = request.body;
+    const userId = request.headers["x-user-id"];
+
+    if (!userId) {
+      return reply
+        .code(400)
+        .send({ error: "User ID não informado no cabeçalho." });
+    }
+
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+    });
+
+    if (!group) {
+      return reply.code(404).send({ error: "Grupo não encontrado." });
+    }
+
+    if (group.createdById !== userId) {
+      return reply
+        .code(403)
+        .send({ error: "Apenas o criador pode editar o grupo." });
+    }
+
+    const updatedGroup = await prisma.group.update({
+      where: { id: groupId },
+      data: { name },
+    });
+
+    reply.send({ success: true, updatedGroup });
+  } catch (error) {
+    console.error(error);
+    reply.code(500).send({ error: "Erro ao editar o grupo." });
+  }
+}
+
+export async function deleteGroup(request, reply) {
+  try {
+    const { groupId } = request.params;
+    const userId = request.headers["x-user-id"];
+
+    if (!userId) {
+      return reply
+        .code(400)
+        .send({ error: "User ID não informado no cabeçalho." });
+    }
+
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+    });
+
+    if (!group) {
+      return reply.code(404).send({ error: "Grupo não encontrado." });
+    }
+
+    if (group.createdById !== userId) {
+      return reply
+        .code(403)
+        .send({ error: "Apenas o criador pode excluir o grupo." });
+    }
+
+    // Primeiro, remove todos os membros associados ao grupo
+    await prisma.userGroup.deleteMany({
+      where: { groupId },
+    });
+
+    // Depois, exclui o grupo
+    await prisma.group.delete({
+      where: { id: groupId },
+    });
+
+    reply.send({
+      success: true,
+      message: "Grupo e membros excluídos com sucesso.",
+    });
+  } catch (error) {
+    console.error(error);
+    reply.code(500).send({ error: "Erro ao excluir o grupo." });
   }
 }
